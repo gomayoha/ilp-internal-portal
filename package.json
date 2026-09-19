@@ -1,0 +1,21 @@
+{
+  "name": "idea-l-pack-internal-portal",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "preview": "node server.mjs --preview",
+    "test": "node --test tests/*.test.mjs",
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@azure/msal-browser": "^5.22.0",
+    "esbuild": "^0.28.2",
+    "jose": "^6.2.12"
+  },
+  "packageManager": "pnpm@11.19.0"
+}

@@ -1,0 +1,5 @@
+private
+runtime
+node_modules
+.env
+.git

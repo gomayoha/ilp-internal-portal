@@ -1,0 +1,46 @@
+name: Publish employee portal interface
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install and build reviewed dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm build
+      - name: Configure secure backend
+        env:
+          PORTAL_API_ORIGIN: ${{ vars.PORTAL_API_ORIGIN }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const value = process.env.PORTAL_API_ORIGIN;
+          if (!value) throw new Error('Configure PORTAL_API_ORIGIN after Microsoft sign-in and backend setup.');
+          const u = new URL(value);
+          if (u.protocol !== 'https:' || u.pathname !== '/' || u.search || u.hash || u.username || u.password) throw new Error('PORTAL_API_ORIGIN must be a plain HTTPS origin.');
+          fs.writeFileSync('public/config.json', JSON.stringify({apiBase:u.origin}));
+          if (fs.existsSync('public/private') || fs.existsSync('public/runtime')) throw new Error('Private files must never be deployed to Pages.');
+          JS
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

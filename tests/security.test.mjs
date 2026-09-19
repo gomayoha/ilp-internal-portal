@@ -1,0 +1,37 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {mkdtempSync,rmSync,readFileSync,mkdirSync,writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {generateKeyPair,SignJWT,exportJWK,createLocalJWKSet} from 'jose';
+import {createIdentityVerifier} from '../identity.mjs';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const cfg={tenantId:'11111111-1111-1111-1111-111111111111',clientId:'22222222-2222-2222-2222-222222222222',audience:'33333333-3333-3333-3333-333333333333',adminIds:['44444444-4444-4444-4444-444444444444']};
+const {privateKey,publicKey}=await generateKeyPair('RS256');const jwk=await exportJWK(publicKey);jwk.kid='test-key';
+const verify=createIdentityVerifier(cfg,createLocalJWKSet({keys:[jwk]}));
+const claims={tid:cfg.tenantId,azp:cfg.clientId,oid:cfg.adminIds[0],scp:'Portal.Access',roles:['Portal.Admin'],preferred_username:'test@example.test'};
+const sign=(changes={},opts={})=>new SignJWT({...claims,...changes}).setProtectedHeader({alg:'RS256',kid:'test-key'}).setIssuedAt().setExpirationTime(opts.exp||'5m').setIssuer(opts.iss||`https://login.microsoftonline.com/${cfg.tenantId}/v2.0`).setAudience(opts.aud||cfg.audience).sign(privateKey);
+test('Microsoft tokens enforce signature, audience, issuer, expiry, tenant, scope and admin object ID',async()=>{
+ assert.equal((await verify(await sign())).role,'admin');
+ assert.equal((await verify(await sign({roles:['Portal.Employee'],oid:'55555555-5555-5555-5555-555555555555'}))).role,'employee');
+ for(const change of [{tid:'wrong-tenant'},{azp:'wrong-client'},{scp:'User.Read'},{roles:[]},{roles:['Portal.Admin'],oid:'unapproved-object'}])await assert.rejects(()=>sign(change).then(verify));
+ for(const opts of [{aud:'wrong'},{iss:'https://wrong.example'},{exp:'-1h'}])await assert.rejects(()=>sign({},opts).then(verify));
+ const token=await sign();const [head,body,sig]=token.split('.');await assert.rejects(()=>verify([head,body,(sig[0]==='A'?'B':'A')+sig.slice(1)].join('.')));
+});
+async function start(port,args=[]){const data=mkdtempSync(path.join(tmpdir(),'ilp-test-'));const fixture=path.join(data,'seed');mkdirSync(fixture);writeFileSync(path.join(fixture,'content.json'),JSON.stringify({people:[],news:[],notifications:[],documents:[],pictures:[],prizes:[]}));const child=spawn(process.execPath,['server.mjs',...args],{cwd:root,env:{...process.env,NODE_ENV:'test',PORT:String(port),APP_ORIGIN:`http://127.0.0.1:${port}`,FRONTEND_URL:'https://gomayoha.github.io/ilp-internal-portal/',DATA_DIR:data,PRIVATE_DIR:fixture,MS_TENANT_ID:'',MS_SPA_CLIENT_ID:'',MS_API_CLIENT_ID:'',ADMIN_OBJECT_IDS:''},stdio:['ignore','pipe','pipe']});await new Promise((resolve,reject)=>{child.stdout.once('data',resolve);child.once('error',reject);child.once('exit',code=>reject(Error('Server exited '+code)))});return {base:`http://127.0.0.1:${port}`,stop:async()=>{child.kill();await new Promise(r=>child.once('exit',r));rmSync(data,{recursive:true,force:true})}}}
+test('anonymous users cannot read content, portraits, PDFs, uploads or private source',async()=>{const s=await start(4194);try{for(const route of ['/api/content','/api/session','/media/portraits/sammy.png','/media/documents/organisation-june-2026.pdf','/media/uploads/test.pdf'])assert.equal((await fetch(s.base+route)).status,401,route);for(const route of ['/private/content.json','/server.mjs','/.env'])assert.equal((await fetch(s.base+route)).status,404,route);assert.equal((await fetch(s.base+'/api/content',{headers:{'oai-authenticated-user-email':'admin@example.test'}})).status,401)}finally{await s.stop()}});
+test('employee sessions can read but cannot publish, upload or delete',async()=>{const s=await start(4191,['--preview','--employee']);try{const r=await fetch(s.base+'/api/session');const user=await r.json();const headers={cookie:r.headers.get('set-cookie').split(';')[0],origin:'https://gomayoha.github.io','X-CSRF-Token':user.csrf,'Content-Type':'application/json'};assert.equal(user.role,'employee');assert.equal((await fetch(s.base+'/api/content',{headers})).status,200);for(const type of ['news','notifications','documents','pictures']){assert.equal((await fetch(s.base+'/api/content/'+type,{method:'POST',headers,body:'{}'})).status,403);assert.equal((await fetch(s.base+'/api/content/'+type+'/anything',{method:'DELETE',headers})).status,403)}}finally{await s.stop()}});
+test('admin writes persist, files are protected, and origin/CSRF/file validation blocks bad requests',async()=>{const s=await start(4192,['--preview']);try{const r=await fetch(s.base+'/api/session');const user=await r.json();const headers={cookie:r.headers.get('set-cookie').split(';')[0],origin:'https://gomayoha.github.io','X-CSRF-Token':user.csrf,'Content-Type':'application/json'};
+ const post=body=>fetch(s.base+'/api/content/documents',{method:'POST',headers,body:JSON.stringify(body)});
+ assert.equal((await fetch(s.base+'/api/content/news',{method:'POST',headers:{...headers,origin:'https://evil.example'},body:'{}'})).status,403);
+ assert.equal((await fetch(s.base+'/api/content/news',{method:'POST',headers:{...headers,'X-CSRF-Token':'bad'},body:'{}'})).status,403);
+ const file={title:'Test document',country:'Vietnam',category:'HR & Leave',filename:'test.txt',base64:Buffer.from('Test file').toString('base64')};
+ assert.equal((await post({...file,filename:'payload.html'})).status,400);
+ const upload=await post(file);assert.equal(upload.status,201);const doc=await upload.json();assert.equal((await fetch(s.base+doc.url)).status,401);assert.equal(await(await fetch(s.base+doc.url,{headers})).text(),'Test file');
+ const invalid=await fetch(s.base+'/api/content/pictures',{method:'POST',headers,body:JSON.stringify({...file,filename:'fake.jpg'})});assert.equal(invalid.status,400);
+ const concurrent=await Promise.all([1,2,3].map(i=>fetch(s.base+'/api/content/news',{method:'POST',headers,body:JSON.stringify({title:'Test '+i,country:'UAE',body:'Test'})})));assert.ok(concurrent.every(r=>r.status===201));const content=await(await fetch(s.base+'/api/content',{headers})).json();assert.equal(content.news.filter(n=>n.title.startsWith('Test ')).length,3);
+ assert.equal((await fetch(s.base+'/api/content/documents/'+doc.id,{method:'DELETE',headers})).status,200);assert.equal((await fetch(s.base+doc.url,{headers})).status,404);
+ const cors=await fetch(s.base+'/api/content',{method:'OPTIONS',headers:{origin:'https://gomayoha.github.io','Access-Control-Request-Method':'GET','Access-Control-Request-Headers':'authorization'}});assert.equal(cors.status,204);assert.equal(cors.headers.get('Access-Control-Allow-Origin'),'https://gomayoha.github.io');
+ }finally{await s.stop()}});

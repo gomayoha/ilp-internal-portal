@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="The Idea L Pack employee portal. People, company news, documents and shared moments.">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#ffffff">
+<title>Idea L Pack · Our workplace</title>
+<link rel="icon" href="assets/logo.png"><link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar"><a class="brand" href="#team" aria-label="Idea L Pack home"><img src="assets/logo.png" alt="Idea L Pack"><span>OUR WORKPLACE</span></a><div class="header-right"><span class="locations-label">CHINA <i>·</i> VIETNAM <i>·</i> UAE</span><button id="account-button" class="icon-button" aria-label="Your account"></button></div></header>
+<section id="login" class="login" hidden><img class="login-logo" src="assets/logo.png" alt="Idea L Pack"><p class="eyebrow">OUR WORKPLACE</p><h1>A place for our people.</h1><p>Sign in with your approved employee account.</p><div id="login-actions"></div><p id="login-status" role="status"></p></section>
+<div id="portal" hidden>
+<section class="brand-stage" aria-label="Idea L Pack internal portal"><div class="stage-note"><span class="eyebrow">IDEA L PACK</span><span>One shared workplace.</span></div><img src="assets/logo.png" class="hero-logo" alt="Idea L Pack"><div class="stage-note end"><span class="eyebrow">FOR OUR PEOPLE</span><span>Across every location.</span></div></section>
+<nav class="tabbar" aria-label="Portal sections"><div role="tablist" aria-label="Content"><button role="tab" data-tab="team" id="tab-team" aria-controls="main"><span class="nav-icon" data-icon="team"></span>Team <span class="tab-index">01</span></button><button role="tab" data-tab="activity" id="tab-activity" aria-controls="main"><span class="nav-icon" data-icon="activity"></span>Activity & News <span class="tab-index">02</span></button><button role="tab" data-tab="notifications" id="tab-notifications" aria-controls="main"><span class="nav-icon" data-icon="bell"></span>Notifications <span class="tab-index">03</span></button><button role="tab" data-tab="documents" id="tab-documents" aria-controls="main"><span class="nav-icon" data-icon="folder"></span>Documents <span class="tab-index">04</span></button><button role="tab" data-tab="pictures" id="tab-pictures" aria-controls="main"><span class="nav-icon" data-icon="image"></span>Pictures <span class="tab-index">05</span></button></div></nav>
+<main id="main" class="shell" role="tabpanel" tabindex="-1"></main>
+<footer><div class="footer-grid shell"><div class="footer-card"><span class="eyebrow">HERE TO HELP</span><h2>Stay connected.</h2><a href="mailto:tina.lai@idea-l-pack.com">Contact HR <span aria-hidden="true">↗</span></a></div><div><h3>OUR WORKPLACE</h3><a href="#team">Team</a><a href="#activity">Activity & News</a><a href="#notifications">Notifications</a><a href="#documents">Documents</a><a href="#pictures">Pictures</a></div><div><h3>GET CONNECTED</h3><a href="https://www.instagram.com/idealpackgroup/" target="_blank" rel="noopener">Instagram ↗</a><a href="https://idea-l-pack.com" target="_blank" rel="noopener">Company website ↗</a></div><div><h3>CONTACT US</h3><a href="mailto:info@idea-l-pack.com">info@idea-l-pack.com</a><a href="tel:+97145854943">+971 4 585 4943</a><p>Dubai Design District,<br>Dubai, UAE</p></div><img src="assets/logo.png" alt="Idea L Pack" class="footer-logo"></div><div class="footer-bottom shell"><span>© <span id="year"></span> Idea L Pack</span><span>Our people. Our workplace.</span><span>INTERNAL USE</span></div></footer>
+</div>
+<dialog id="modal"><button class="modal-close icon-button" aria-label="Close dialog">×</button><div id="modal-content"></div></dialog>
+<div id="toast" role="status"></div>
+<script src="auth.js" defer></script>
+<script src="app.js" defer></script>
+</body></html>
