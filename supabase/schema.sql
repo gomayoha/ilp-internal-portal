@@ -7,10 +7,19 @@ create table public.portal_admin_slots (
 insert into public.portal_admin_slots(slot) values (1),(2),(3);
 alter table public.portal_admin_slots enable row level security;
 revoke all on public.portal_admin_slots from anon, authenticated;
+create policy admin_assignments_owner_only on public.portal_admin_slots for all to anon, authenticated using (false) with check (false);
 
-create function public.is_portal_admin() returns boolean
+create schema if not exists portal_private;
+revoke all on schema portal_private from public;
+grant usage on schema portal_private to anon, authenticated;
+create function portal_private.is_portal_admin() returns boolean
 language sql stable security definer set search_path = ''
-as $$ select exists(select 1 from public.portal_admin_slots where user_id = (select auth.uid())) $$;
+as $$ select (select auth.uid()) is not null and exists(select 1 from public.portal_admin_slots where user_id = (select auth.uid())) $$;
+revoke all on function portal_private.is_portal_admin() from public;
+grant execute on function portal_private.is_portal_admin() to anon, authenticated;
+create function public.is_portal_admin() returns boolean
+language sql stable security invoker set search_path = ''
+as $$ select portal_private.is_portal_admin() $$;
 revoke all on function public.is_portal_admin() from public;
 grant execute on function public.is_portal_admin() to anon, authenticated;
 
@@ -44,6 +53,7 @@ alter table public.portal_entries enable row level security;
 revoke all on public.portal_directory, public.portal_entries from anon, authenticated;
 grant select on public.portal_directory, public.portal_entries to anon, authenticated;
 grant insert, update, delete on public.portal_entries to authenticated;
+grant select, insert, update, delete on public.portal_admin_slots, public.portal_directory, public.portal_entries to service_role;
 create policy directory_read on public.portal_directory for select to anon, authenticated using (true);
 create policy entries_read on public.portal_entries for select to anon, authenticated using (true);
 create policy entries_insert on public.portal_entries for insert to authenticated with check ((select public.is_portal_admin()));
