@@ -13,7 +13,7 @@ const sessions=new Map(),random=()=>randomBytes(32).toString('hex');
 const read=()=>JSON.parse(fs.readFileSync(content,'utf8')),save=data=>{fs.writeFileSync(content+'.tmp',JSON.stringify(data));fs.renameSync(content+'.tmp',content)};
 const mime={'.html':'text/html','.js':'application/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.pdf':'application/pdf','.ttf':'font/ttf'};
 function fail(status,message){return Object.assign(Error(message),{status})}
-async function body(req){let size=0,chunks=[];for await(const c of req){size+=c.length;if(size>15*1024*1024)throw fail(413,'File too large.');chunks.push(c);}return JSON.parse(Buffer.concat(chunks).toString());}
+async function body(req){let size=0,chunks=[];for await(const c of req){size+=c.length;if(size>30*1024*1024)throw fail(413,'File too large.');chunks.push(c);}return JSON.parse(Buffer.concat(chunks).toString());}
 const server=http.createServer(async(req,res)=>{const json=(code,data)=>{res.writeHead(code,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};try{
  if(req.headers.host!==`127.0.0.1:${port}`)throw fail(403,'Invalid host.');
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');

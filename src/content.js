@@ -13,9 +13,9 @@ export function entryPayload(type,input){
 export function filePayload(type,input){
  const extension=String(input.filename||'').match(/\.[^.]+$/)?.[0].toLowerCase();
  if(!mime[extension]||(type==='pictures'&&!['.jpg','.jpeg','.png','.webp'].includes(extension)))throw Error('This file type is not supported.');
- if(typeof input.base64!=='string'||input.base64.length>13981016||!/^[A-Za-z0-9+/]+={0,2}$/.test(input.base64))throw Error('Invalid file.');
+ if(typeof input.base64!=='string'||input.base64.length>27962028||!/^[A-Za-z0-9+/]+={0,2}$/.test(input.base64))throw Error('Invalid file.');
  const bytes=Uint8Array.from(atob(input.base64),c=>c.charCodeAt(0));
- if(!bytes.length||bytes.length>10485760)throw Error('Choose a file between 1 byte and 10 MB.');
+ if(!bytes.length||bytes.length>20971520)throw Error('Choose a file between 1 byte and 20 MB.');
  if(type==='pictures'){const starts=a=>a.every((v,i)=>bytes[i]===v);const valid=extension==='.png'?starts([137,80,78,71,13,10,26,10]):extension==='.webp'?starts([82,73,70,70])&&String.fromCharCode(...bytes.slice(8,12))==='WEBP':starts([255,216,255]);if(!valid)throw Error('Choose a valid JPG, PNG or WebP picture.');}
  return {extension,mime:mime[extension],bytes};
 }

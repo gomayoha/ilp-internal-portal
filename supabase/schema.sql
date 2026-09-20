@@ -38,7 +38,7 @@ create table public.portal_entries (
   url text check (url ~ '^/media/[a-zA-Z0-9_./-]+$' and url !~ '\.\.'),
   image text check (image ~ '^/media/[a-zA-Z0-9_./-]+$' and image !~ '\.\.'),
   format text,
-  size bigint check (size between 1 and 10485760),
+  size bigint check (size between 1 and 20971520),
   original_filename text,
   kind text,
   subtitle text,
@@ -62,7 +62,7 @@ create policy entries_delete on public.portal_entries for delete to authenticate
 
 -- Public files are intentional: viewers do not sign in. Writes remain restricted.
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
-values ('portal-media','portal-media',true,10485760,array[
+values ('portal-media','portal-media',true,20971520,array[
  'image/jpeg','image/png','image/webp','application/pdf','text/plain','text/csv','application/zip',
  'application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
  'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

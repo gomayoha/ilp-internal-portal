@@ -55,6 +55,6 @@ The build pins dependencies in `pnpm-lock.yaml`, bundles the Supabase client and
 
 ## Administrator use
 
-Open the account icon, sign in with your portal email/password, and publishing controls appear. News and notifications can be edited or removed; documents and pictures can be uploaded and removed. Public signup is absent and disabled in Supabase. Uploads are limited to 10 MB each. Changing a password is available in the account dialog. Sessions stay in memory; refreshing or closing the page signs you out, while viewing remains open.
+Open the account icon, sign in with your portal email/password, and publishing controls appear. News and notifications can be edited or removed; documents and pictures can be uploaded and removed. Public signup is absent and disabled in Supabase. Uploads are limited to 20 MB each. Changing a password is available in the account dialog. Sessions stay in memory; refreshing or closing the page signs you out, while viewing remains open.
 
 The database is authoritative. Ordinary accounts cannot grant themselves administrator access. Project owners must keep their Supabase account secure and disable unwanted Auth providers. Keep the third administrator slot unassigned until its person is known.
