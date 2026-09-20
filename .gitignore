@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.*
+!.env.example
+runtime/
+private/
+.DS_Store
+# Generated official dependencies; rebuilt from reviewed source in CI.
+public/auth.js
+public/auth.js.LEGAL.txt
+public/assets/montserrat.ttf
