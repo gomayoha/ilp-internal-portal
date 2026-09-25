@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {entryPayload,filePayload} from '../src/content.js';
-const ids=['11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222','33333333-3333-4333-8333-333333333333','44444444-4444-4444-8444-444444444444'];
-test('PostgreSQL enforces public reading and only three assigned administrators',async t=>{
+const ids=['11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222','33333333-3333-4333-8333-333333333333','44444444-4444-4444-8444-444444444444','55555555-5555-4555-8555-555555555555'];
+test('PostgreSQL limits viewing to the shared-access account and three administrators',async t=>{
  const db=new PGlite();
  await db.exec(`create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create schema storage;
  create table auth.users(id uuid primary key);
@@ -16,20 +16,27 @@ test('PostgreSQL enforces public reading and only three assigned administrators'
  await db.exec(await fs.readFile(new URL('../supabase/schema.sql',import.meta.url),'utf8'));
  for(const id of ids)await db.query('insert into auth.users values ($1)',[id]);
  for(let i=0;i<3;i++)await db.query('update public.portal_admin_slots set user_id=$1 where slot=$2',[ids[i],i+1]);
- await db.exec(`insert into portal_directory values(1,'[]','[]'); insert into portal_entries(id,type,title,country,body) values('seed','news','Company news','Vietnam','Update');`);
+ await db.query('insert into public.portal_viewer_account(id,user_id) values(1,$1)',[ids[3]]);
+ await db.exec(`insert into portal_directory values(1,'[]','[]'); insert into portal_entries(id,type,title,country,body) values('seed','news','Company news','Vietnam','Update'); insert into storage.objects(bucket_id,name) values('portal-media','portraits/person.png');`);
  async function as(role,id,fn){await db.exec('begin');try{await db.exec('set local role '+role);await db.query("select set_config('request.jwt.claim.sub',$1,true)",[id||'']);return await fn();}finally{await db.exec('rollback');}}
- await t.test('anonymous readers can see content but cannot write or enumerate admin identities',async()=>{
-  await as('anon',null,async()=>assert.equal((await db.query('select * from portal_entries')).rows.length,1));
+ await t.test('anonymous readers cannot see entries, people, files or account assignments',async()=>{
+  await as('anon',null,async()=>{assert.equal((await db.query('select * from portal_entries')).rows.length,0);assert.equal((await db.query('select * from portal_directory')).rows.length,0);assert.equal((await db.query('select * from storage.objects')).rows.length,0);assert.equal((await db.query('select can_view_portal() as ok')).rows[0].ok,false)});
+  await assert.rejects(as('anon',null,()=>db.exec('select * from portal_viewer_account')));
   for(const sql of ["insert into portal_entries(type,title,country) values('news','Intrusion','China')","update portal_entries set title='Intrusion'","delete from portal_entries","select * from portal_admin_slots","insert into storage.objects(bucket_id,name) values('portal-media','uploads/a.pdf')"]){await assert.rejects(as('anon',null,()=>db.exec(sql)));}
  });
- await t.test('authenticated but unassigned account cannot publish or grant itself a slot',async()=>{
-  await as('authenticated',ids[3],async()=>{assert.equal((await db.query('select is_portal_admin() as ok')).rows[0].ok,false);assert.equal((await db.query("delete from portal_entries returning id")).rows.length,0);});
-  await assert.rejects(as('authenticated',ids[3],()=>db.exec("insert into portal_entries(type,title,country) values('news','Intrusion','China')")));
-  await assert.rejects(as('authenticated',ids[3],()=>db.query('update portal_admin_slots set user_id=$1 where slot=1',[ids[3]])));
+ await t.test('shared-access account may read and download but cannot publish',async()=>{
+  await as('authenticated',ids[3],async()=>{assert.equal((await db.query('select can_view_portal() as ok')).rows[0].ok,true);assert.equal((await db.query('select * from portal_entries')).rows.length,1);assert.equal((await db.query('select * from portal_directory')).rows.length,1);assert.equal((await db.query('select * from storage.objects')).rows.length,1);});
+  await assert.rejects(as('authenticated',ids[3],()=>db.exec("insert into portal_entries(type,title,country,body) values('news','Intrusion','China','Body')")));
   await assert.rejects(as('authenticated',ids[3],()=>db.exec("insert into storage.objects(bucket_id,name) values('portal-media','uploads/abc.pdf')")));
  });
+ await t.test('authenticated but unassigned account cannot publish or grant itself a slot',async()=>{
+  await as('authenticated',ids[4],async()=>{assert.equal((await db.query('select is_portal_admin() as ok')).rows[0].ok,false);assert.equal((await db.query('select can_view_portal() as ok')).rows[0].ok,false);assert.equal((await db.query('select * from portal_entries')).rows.length,0);assert.equal((await db.query('select * from storage.objects')).rows.length,0);assert.equal((await db.query("delete from portal_entries returning id")).rows.length,0);});
+  await assert.rejects(as('authenticated',ids[4],()=>db.exec("insert into portal_entries(type,title,country) values('news','Intrusion','China')")));
+  await assert.rejects(as('authenticated',ids[4],()=>db.query('update portal_admin_slots set user_id=$1 where slot=1',[ids[4]])));
+  await assert.rejects(as('authenticated',ids[4],()=>db.exec("insert into storage.objects(bucket_id,name) values('portal-media','uploads/abc.pdf')")));
+ });
  await t.test('all three assigned accounts can publish, edit and remove; upload restrictions still apply',async()=>{
-  for(const id of ids.slice(0,3))await as('authenticated',id,async()=>{assert.equal((await db.query('select is_portal_admin() as ok')).rows[0].ok,true);await db.exec("insert into portal_entries(id,type,title,country) values('new','news','Published','UAE'); update portal_entries set title='Edited' where id='new'; delete from portal_entries where id='new'; insert into storage.objects(bucket_id,name) values('portal-media','uploads/abc.pdf'); delete from storage.objects;");});
+  for(const id of ids.slice(0,3))await as('authenticated',id,async()=>{assert.equal((await db.query('select is_portal_admin() as ok')).rows[0].ok,true);assert.equal((await db.query('select * from portal_directory')).rows.length,1);await db.exec("insert into portal_entries(id,type,title,country) values('new','news','Published','UAE'); update portal_entries set title='Edited' where id='new'; delete from portal_entries where id='new'; insert into storage.objects(bucket_id,name) values('portal-media','uploads/abc.pdf'); delete from storage.objects;");});
   for(const name of ['uploads/abc.html','portraits/abc.png','uploads/../abc.pdf'])await assert.rejects(as('authenticated',ids[0],()=>db.query('insert into storage.objects(bucket_id,name) values($1,$2)',['portal-media',name])));
   await assert.rejects(as('authenticated',ids[0],()=>db.exec("update portal_admin_slots set user_id=null")));
   await assert.rejects(as('authenticated',ids[0],()=>db.exec("insert into portal_entries(type,title,country) values('news','x','Mars')")));

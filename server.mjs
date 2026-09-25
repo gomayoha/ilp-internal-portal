@@ -20,6 +20,7 @@ const server=http.createServer(async(req,res)=>{const json=(code,data)=>{res.wri
  const url=new URL(req.url,origin),p=decodeURIComponent(url.pathname),get=['GET','HEAD'].includes(req.method);
  const sid=(req.headers.cookie||'').split('; ').find(x=>x.startsWith('ilp_preview='))?.slice(12);let session=sessions.get(sid);if(session?.expires<Date.now()){sessions.delete(sid);session=null;}
  if(p==='/api/session'&&get)return json(200,session||{role:'viewer',email:'visitor',preview:true});
+ if(p==='/config.json'&&get)return json(200,{});
  if(!get&&req.headers.origin!==origin)throw fail(403,'Origin not allowed.');
  if(p==='/api/preview-admin'&&req.method==='POST'){const id=random();session={role:'admin',email:'preview-administrator@localhost',csrf:random(),preview:true,expires:Date.now()+3600000};sessions.set(id,session);res.setHeader('Set-Cookie',`ilp_preview=${id}; HttpOnly; SameSite=Strict; Path=/; Max-Age=3600`);return json(200,session);}
  if(!get&&(!session||req.headers['x-csrf-token']!==session.csrf))throw fail(403,'Administrator access required.');
