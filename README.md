@@ -2,6 +2,8 @@
 
 A five-section portal for Our Team, Activity & News, Notifications, Documents, and Photo Gallery. Employees enter one shared workplace password to view and download. Only the two assigned administrators (with a third slot reserved) can publish, edit, or upload content using their separate email/password accounts.
 
+Photo Gallery has separate Company moments and Our products collections. Administrators choose a collection when uploading; the product selection is sourced from the official Idea L Pack website. All gallery media remains in the private Storage bucket.
+
 ## Hosting and access
 
 GitHub Pages serves the public application shell. Supabase Auth checks the shared password; database row-level security and a private Storage bucket keep the team directory, updates, photos, and documents inaccessible to unauthenticated visitors. The GitHub repository contains code and public logo assets, not the protected portal records or uploaded files. The `noindex` tag is supplemental and is not an access control.

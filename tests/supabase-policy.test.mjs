@@ -53,6 +53,9 @@ test('PostgreSQL limits viewing to the shared-access account and three administr
 test('content payload rejects invalid files and untrusted author or role fields',()=>{
  const row=entryPayload('news',{title:' Hello ',body:'Update',country:'China',role:'admin',author:'forged'});assert.equal(row.title,'Hello');assert.equal(row.role,undefined);assert.equal(row.author,undefined);
  assert.throws(()=>entryPayload('documents',{title:'Doc',country:'China',category:'Bad'}));
+ assert.equal(entryPayload('pictures',{title:'Team event',country:'Vietnam',collection:'Company moments'}).subtitle,null);
+ assert.equal(entryPayload('pictures',{title:'Product',country:'All locations',collection:'Products'}).subtitle,'Products');
+ assert.throws(()=>entryPayload('pictures',{title:'Product',country:'China',collection:'Other'}));
  assert.throws(()=>filePayload('pictures',{filename:'bad.jpg',base64:btoa('not a JPEG')}));
  assert.throws(()=>filePayload('documents',{filename:'page.html',base64:btoa('<html>')}));
  assert.equal(filePayload('documents',{filename:'note.txt',base64:btoa('Hello')}).mime,'text/plain');

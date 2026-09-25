@@ -8,6 +8,7 @@ export function entryPayload(type,input){
  const row={type,title:input.title.trim(),country:input.country,date:new Date().toISOString()};
  if(type==='news'||type==='notifications'){if(typeof input.body!=='string'||!input.body.trim()||input.body.length>10000)throw Error('Enter a message of up to 10,000 characters.');row.body=input.body.trim();}
  if(type==='documents'){if(!categories.includes(input.category))throw Error('Choose a document category.');row.category=input.category;}
+ if(type==='pictures'){const collection=input.collection||'Company moments';if(!['Company moments','Products'].includes(collection))throw Error('Choose a photo collection.');row.subtitle=collection==='Products'?'Products':null;}
  return row;
 }
 export function filePayload(type,input){
