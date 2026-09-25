@@ -7,7 +7,10 @@ if(!access.ok)throw Error('The portal access check is unavailable. Apply the vie
 if(await access.json()!==false)throw Error('An anonymous visitor unexpectedly passed the portal access check.');
 for(const table of ['portal_directory','portal_entries']){
  const response=await fetch(config.supabaseUrl+'/rest/v1/'+table+'?select=id&limit=1',{headers});
- if(!response.ok)throw Error('Supabase content is unavailable: '+table);
+ if(response.ok){
+  const rows=await response.json();
+  if(!Array.isArray(rows)||rows.length)throw Error('Anonymous visitors can read private portal data: '+table);
+ }else if(![401,403].includes(response.status))throw Error('Supabase access check failed: '+table+' ('+response.status+')');
 }
 for(const name of ['private','runtime'])if(await fs.stat('public/'+name).catch(()=>null))throw Error('Source packs must not be included in the static deployment.');
 console.log('Supabase access check and static release configuration verified.');
