@@ -1,4 +1,4 @@
-export const categories=['Company & Policies','HR & Leave','Production & Planning','Prepress & Artwork','Quality & Compliance','Health & Safety','Purchasing & Logistics','Events & Announcements'];
+export const categories=['Leadership','Sales','Merchandising','Warehouse','Production','Product Development','Purchasing','Quality Control','Finance','Human Resources & Administration','Projects'];
 const types=['news','notifications','documents','pictures'];
 const mime={'.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.webp':'image/webp','.pdf':'application/pdf','.txt':'text/plain','.csv':'text/csv','.zip':'application/zip','.doc':'application/msword','.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document','.xls':'application/vnd.ms-excel','.xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','.ppt':'application/vnd.ms-powerpoint','.pptx':'application/vnd.openxmlformats-officedocument.presentationml.presentation'};
 export function entryPayload(type,input){

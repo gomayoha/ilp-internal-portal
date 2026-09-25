@@ -1,38 +1,27 @@
-# Idea L Pack — employee portal
+# Idea L Pack — internal workplace portal
 
-A five-tab portal for Team, Activity & News, Notifications, Documents and Pictures. Everyone can view and download without signing in. Only three assigned administrator accounts can publish, edit announcements, or upload/remove documents and photographs.
+A five-section portal for Our Team, Activity & News, Notifications, Documents, and Photo Gallery. Employees enter one shared workplace password to view and download. Only the two assigned administrators (with a third slot reserved) can publish, edit, or upload content using their separate email/password accounts.
 
-## Hosting
+## Hosting and access
 
-GitHub Pages hosts `public/`. Supabase provides the database, public file storage and email/password administrator login. No Microsoft tenant configuration or separate Node server is needed.
+GitHub Pages serves the public application shell. Supabase Auth checks the shared password; database row-level security and a private Storage bucket keep the team directory, updates, photos, and documents inaccessible to unauthenticated visitors. The GitHub repository contains code and public logo assets, not the protected portal records or uploaded files. The `noindex` tag is supplemental and is not an access control.
 
-Public viewing is intentional: anyone with the link can see the team directory, news, photographs and documents. The `noindex` tag discourages search indexing but does not restrict access. Do not publish confidential HR records here. Files may remain in visitors' downloads or CDN caches after removal.
+The shared viewer password is attached to one purpose-specific Supabase Auth account, `workplace-access@idea-l-pack.com`. It is never stored in the GitHub repository or JavaScript. The owner creates that account in Supabase Authentication → Users with **Auto confirm user** enabled and privately sets a password of at least 15 characters. Do not send the password in chat. Share it securely with staff and rotate it if it spreads beyond the intended audience. Because it is shared, the portal cannot distinguish individual employee viewers; a person who knows it can access the same content as other viewers. Administrator accounts must use different private passwords.
 
-## Set up Supabase
+Public signup and anonymous sign-in should remain disabled in Supabase Auth. The Auth user alone has no viewing right until its ID is registered in `portal_viewer_account`; only the project's owner can do that. The three administrator slots remain in `portal_admin_slots`. The viewer account cannot post or upload; assigned administrators can still view everything after signing in directly from the password screen.
 
-1. Create a **Free** project in your organization, preferably Singapore for this team. Free-plan quotas and inactivity pauses apply; check [current limits](https://supabase.com/pricing). Keep offline source backups.
-2. Run `supabase/schema.sql` once in the SQL editor of this dedicated project. It creates public-read tables, a public `portal-media` bucket and exactly three administrator slots. Database row-level security protects writes; a visitor cannot gain access by changing the page or calling the API directly.
-3. In Authentication settings, disable **Allow new users to sign up** and anonymous sign-ins. Set the site URL to `https://gomayoha.github.io/ilp-internal-portal/`. Use a minimum password length of 15 characters. No email delivery is needed for the initial owner-created accounts. Automatic email resets require separately configured SMTP; the portal currently directs users to the project owner for recovery.
-4. In Authentication → Users, create an email/password account for Yohan's work email and Tina's work email. Enter strong unique passwords privately, and transfer credentials securely. These are new portal passwords, not Microsoft/mailbox passwords. Leave the third slot empty until the second HR person is identified.
-5. Assign each account's Supabase user ID to a slot using SQL below. Having an Auth account alone grants no publishing rights. Slots can only be assigned by the project owner, not through the public website. Removing a slot immediately removes write access even if a user remains signed in.
+## Installation and database
+
+For a new project, run `supabase/schema.sql` in the Supabase SQL editor. Add the viewer account ID to `portal_viewer_account` and the approved admin IDs to their slots. The portal owner can find user IDs in Authentication → Users. Keep slot 3 empty until the additional HR administrator is identified. Existing projects should apply the access-and-departments update through the project migration history before switching the live site.
 
 ```sql
--- Replace these placeholders with actual Auth user IDs.
-update public.portal_admin_slots set user_id = 'YOHAN-USER-UUID' where slot = 1;
-update public.portal_admin_slots set user_id = 'TINA-USER-UUID' where slot = 2;
--- Reserve slot 3: keep user_id null until the third person is approved.
+insert into public.portal_viewer_account(id,user_id)
+select 1,id from auth.users where email='workplace-access@idea-l-pack.com';
 ```
 
-6. Import the supplied source pack. Put it in `private/`, install dependencies, then run `pnpm seed --check`. For the import, supply `SUPABASE_URL` and `SUPABASE_SECRET_KEY` through a local environment file and run `node --env-file=.env scripts/import-content.mjs`. The secret key must never appear in the browser, source control, chat or a public ZIP. The script adds missing initial files and entries without overwriting existing ones.
-7. Put only the project URL and **publishable** key into `public/config.json`:
+The source content, portraits, photos, and original PDFs are in `private/` and are not deployed to GitHub Pages. Use the import script described in `scripts/import-content.mjs` with a locally supplied Supabase secret key to seed a new project. Never put that secret in source control or the browser. The browser's `public/config.json` contains only the project URL and Supabase publishable key; row-level policies enforce access.
 
-```json
-{"supabaseUrl":"https://YOUR-PROJECT.supabase.co","supabasePublishableKey":"sb_publishable_YOUR_PUBLIC_KEY"}
-```
-
-The publishable key is intended for browsers. The database policies, not secrecy of this key, enforce publishing permissions.
-
-## Local preview and checks
+## Local checks
 
 Node.js 22+ and pnpm are required.
 
@@ -43,18 +32,12 @@ pnpm test
 pnpm preview
 ```
 
-Open `http://127.0.0.1:4173`. With an empty Supabase configuration the loopback-only preview reads the local source pack. Visitors see all content. The account button opens an explicitly labelled administrator demonstration; preview changes are kept in `runtime/supabase-preview-content.json`. This demo is not deployed. When Supabase is configured, the same page uses real hosted data and login.
+The loopback-only preview at `http://127.0.0.1:4173` uses the local source pack and a clearly labelled administrator demonstration. It bypasses the hosted access gate solely to allow local visual review. Production always uses Supabase Auth and private Storage. Local preview edits are kept in `runtime/supabase-preview-content.json` and are not deployed.
 
-Tests run the actual schema and access policies in a local PostgreSQL-compatible PGlite runtime, with synthetic Auth/Storage tables. They verify anonymous reads, anonymous and unassigned write denial, three-account limits, slot revocation, file path restrictions and payload validation. They do not replace checking real Supabase Auth and Storage after connection.
+Tests exercise the SQL policies using PGlite. They verify that anonymous and unassigned accounts cannot read portal records or storage objects, that the shared viewer can read but not write, and that only the three assigned admin accounts can publish and upload. They also check the local preview API and content validation. After a live release, verify unauthenticated REST and Storage access are denied and that a real viewer can download files.
 
-## Release
+## Publishing
 
-Choose **GitHub Actions** as the repository's Pages source and run the manual **Publish employee portal** workflow from the reviewed release branch. It tests, builds and deploys only `public/`, preserving the existing Pages URL. Before release, verify both administrator accounts, a signed-out browser, uploads, downloads and the public media URLs. Keep the old live page until the new hosted flow works.
+The manual GitHub Actions workflow tests, builds, and deploys only `public/` to GitHub Pages, preserving the existing URL. Coordinate the release with the Supabase migration: the viewer account must exist before access is locked, and the database policies and Storage bucket must be private before declaring the password protection active. Old public media URLs stop working after the bucket is made private. The browser uses authenticated downloads instead.
 
-The build pins dependencies in `pnpm-lock.yaml`, bundles the Supabase client and downloads the official Montserrat font with a SHA-256 check. Generated bundles/fonts are not committed. The Seasons was not supplied, so headings use a serif fallback. UI colors follow the supplied palette.
-
-## Administrator use
-
-Open the account icon, sign in with your portal email/password, and publishing controls appear. News and notifications can be edited or removed; documents and pictures can be uploaded and removed. Public signup is absent and disabled in Supabase. Uploads are limited to 20 MB each. Changing a password is available in the account dialog. Sessions stay in memory; refreshing or closing the page signs you out, while viewing remains open.
-
-The database is authoritative. Ordinary accounts cannot grant themselves administrator access. Project owners must keep their Supabase account secure and disable unwanted Auth providers. Keep the third administrator slot unassigned until its person is known.
+The Montserrat font is pinned by checksum in `build.mjs`. The Seasons was not supplied, so headings use a serif fallback. The header uses the supplied sage sample; the rest of the palette follows the Idea L Pack colour reference.
