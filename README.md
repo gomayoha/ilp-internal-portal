@@ -12,7 +12,7 @@ Public signup and anonymous sign-in should remain disabled in Supabase Auth. The
 
 ## Installation and database
 
-For a new project, run `supabase/schema.sql` in the Supabase SQL editor. Add the viewer account ID to `portal_viewer_account` and the approved admin IDs to their slots. The portal owner can find user IDs in Authentication → Users. Keep slot 3 empty until the additional HR administrator is identified. Existing projects should apply the access-and-departments update through the project migration history before switching the live site.
+For a new project, run `supabase/schema.sql` in the Supabase SQL editor. Add the viewer account ID to `portal_viewer_account` and the approved admin IDs to their slots. The portal owner can find user IDs in Authentication → Users. Keep slot 3 empty until the additional HR administrator is identified. For the existing project, first apply `supabase/prepare_viewer_access.sql`, deploy the updated site, and then apply `supabase/access_and_departments.sql` to lock down records and files.
 
 ```sql
 insert into public.portal_viewer_account(id,user_id)
