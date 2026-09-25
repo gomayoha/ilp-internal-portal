@@ -13,7 +13,7 @@ function toast(msg){$('#toast').textContent=msg;$('#toast').classList.add('show'
 function safeUrl(v){try{const u=new URL(v.startsWith('/media/')?(config?.apiBase||'')+v:v,location.href);return ['http:','https:'].includes(u.protocol)?esc(u.href):'#'}catch{return '#'}}
 async function api(path,opts={}){if(config?.supabaseUrl)return window.PortalData.api(path,opts);const r=await fetch(path,{credentials:'same-origin',...opts,headers:{...(opts.body?{'Content-Type':'application/json'}:{}),...(session?.csrf?{'X-CSRF-Token':session.csrf}:{}),...opts.headers}});const out=await r.json().catch(()=>({error:'The service returned an unexpected response.'}));if(!r.ok)throw Error(out.error||'Unable to complete your request.');return out}
 const isAdmin=()=>session?.role==='admin';
-const img=p=>`<img class="portrait" data-protected-src="${esc(p.photo)}" alt="" loading="lazy">`;
+const img=p=>`<img class="portrait" data-country="${esc(p.country)}" data-protected-src="${esc(p.photo)}" alt="" loading="lazy">`;
 const countryBadge=p=>`<span class="person-country">${esc(p.country)}</span>`;
 function personCard(p){return `<button class="person person-card" data-person="${p.id}" aria-label="View ${esc(p.name)}, ${esc(p.role)}">${img(p)}<span><span class="person-name">${esc(p.name)}</span><span class="person-role" style="display:block">${esc(p.role)}</span>${countryBadge(p)}</span><span class="arrow">${icon('arrow')}</span></button>`}
 function heading(eyebrow,title,subtitle,action=''){return `<div class="section-heading"><div><span class="eyebrow">${eyebrow}</span><h1>${title}</h1><p>${subtitle}</p></div><div class="heading-actions">${action}</div></div>`}
