@@ -84,3 +84,31 @@
 .gallery.product-gallery figure:first-child{grid-column:auto}
 .gallery.product-gallery figure:first-child img,.gallery.product-gallery img{height:250px;object-fit:contain;object-position:center;background:var(--soft)}
 @media(max-width:700px){.gallery.product-gallery figure:first-child img,.gallery.product-gallery img{height:185px}}
+
+/* Department columns requested for the team directory */
+.org-division .branch-content{padding:24px}
+.org-columns{display:grid;gap:14px;align-items:start}
+.org-columns-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.org-columns-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.org-column{min-width:0;border:1px solid var(--line);border-radius:8px;background:var(--white);overflow:hidden}
+.org-column-head{display:flex;flex-direction:column;justify-content:space-between;min-height:94px;padding:18px 19px;background:var(--soft);border-bottom:1px solid var(--line)}
+.org-column-head h3{font:normal 25px/1.1 var(--serif);margin:0 0 8px}
+.org-column-head>span{font-size:11px;color:var(--muted)}
+.org-unit{padding:16px}
+.org-unit+.org-unit{border-top:1px solid var(--line)}
+.org-unit-label,.org-members-heading{font-size:10px;letter-spacing:.13em;font-weight:600;margin-bottom:10px}
+.org-unit-lead .person-card{background:var(--sage);border-color:var(--sage)}
+.org-member-list{display:grid;gap:7px}
+.org-member .person-card,.org-unit-lead .person-card{padding:11px;gap:10px;min-height:72px;align-items:center}
+.org-member .portrait,.org-unit-lead .portrait{width:45px;height:45px;border-width:2px}
+.org-member .person-name,.org-unit-lead .person-name{font-size:13px}
+.org-member .person-role,.org-unit-lead .person-role{font-size:11px!important;line-height:1.35}
+.org-member .person-country,.org-unit-lead .person-country{font-size:9px;margin-top:4px}
+.org-member small{display:block;margin:4px 3px 3px 10px;color:var(--muted);font-size:10px}
+.org-members-heading{margin:18px 0 9px;color:var(--muted)}
+.org-unit-note{font-size:10px;color:var(--muted);margin:7px 2px 0}
+.org-coordinator{display:flex;align-items:center;gap:22px;padding:15px 18px;margin-bottom:18px;border:1px solid var(--line);border-radius:7px;background:var(--soft)}
+.org-coordinator>.eyebrow{min-width:190px}
+.org-coordinator .person-card{max-width:460px;background:var(--white)}
+@media(max-width:1100px){.org-columns-3,.org-columns-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.org-columns-3,.org-columns-4{grid-template-columns:1fr}.org-division .branch-content{padding:14px}.org-coordinator{display:block}.org-coordinator>.eyebrow{display:block;margin-bottom:10px}.org-column-head{min-height:75px}.org-member .person-card,.org-unit-lead .person-card{min-height:66px}}

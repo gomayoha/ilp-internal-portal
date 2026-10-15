@@ -15,30 +15,58 @@ async function api(path,opts={}){if(config?.supabaseUrl)return window.PortalData
 const isAdmin=()=>session?.role==='admin';
 const img=p=>`<img class="portrait" data-country="${p.id==='sammy'?'':esc(p.country)}" data-protected-src="${esc(p.photo)}" alt="" loading="lazy">`;
 const countryBadge=p=>p.id==='sammy'?'':`<span class="person-country">${esc(p.country)}</span>`;
-function personCard(p){return `<button class="person person-card" data-person="${p.id}" aria-label="View ${esc(p.name)}, ${esc(p.role)}">${img(p)}<span><span class="person-name">${esc(p.name)}</span><span class="person-role" style="display:block">${esc(p.role)}</span>${countryBadge(p)}</span><span class="arrow">${icon('arrow')}</span></button>`}
+function personCard(p){return `<button class="person person-card" data-person="${p.id}" aria-label="View ${esc(p.name)}, ${esc(p.role)}">${img(p)}<span><span class="person-name">${esc(p.name)}</span><span class="person-role" style="display:block">${esc(p.role)}</span>${countryBadge(p)}</span></button>`}
 function heading(eyebrow,title,subtitle,action=''){return `<div class="section-heading"><div><span class="eyebrow">${eyebrow}</span><h1>${title}</h1><p>${subtitle}</p></div><div class="heading-actions">${action}</div></div>`}
 const addButton=(kind,label)=>isAdmin()?`<button class="button black" data-add="${kind}">${icon('plus')}${label}</button>`:'';
 function empty(title,text,ic='folder'){return `<div class="empty">${icon(ic)}<h2>${title}</h2><p>${text}</p></div>`}
 function searchBox(placeholder){return `<label class="search">${icon('search')}<input id="search" type="search" value="${esc(query)}" placeholder="${placeholder}" aria-label="${placeholder}"></label>`}
 function team(){const eligible=data.people.filter(p=>(teamCountry==='All locations'||p.country===teamCountry)&&(division==='All teams'||p.division===division)&&`${p.name} ${p.role} ${p.country}`.toLowerCase().includes(query.toLowerCase()));
-const filtered=query||teamCountry!=='All locations'||division!=='All teams';
-main.innerHTML=heading('01 / OUR PEOPLE','The team.',`${data.people.length} colleagues. One shared direction.`,`<a class="button" href="${safeUrl('/media/documents/organisation-june-2026.pdf')}" download>${icon('down')}Organisation chart</a>`)+`<div class="toolbar"><div class="segmented" aria-label="Team division">${['All teams','Business','Operation','Support'].map(d=>`<button data-division="${d}" class="${division===d?'active':''}" aria-pressed="${division===d}">${d}</button>`).join('')}</div><select class="filter-select" id="team-country" aria-label="Team location">${['All locations',...countries,'France','Sri Lanka'].map(c=>`<option ${c===teamCountry?'selected':''}>${c}</option>`).join('')}</select>${searchBox('Find a colleague or role')}</div>`+(filtered?`<p class="source-note" style="margin:0 0 18px">${eligible.length} ${eligible.length===1?'colleague':'colleagues'} found</p><div class="people-grid">${eligible.map(personCard).join('')}</div>${!eligible.length?empty('No matching colleagues.','Try another name, role or location.','team'):''}`:orgView())+`<p class="source-note">Organisation as of June 2026 · <a href="${safeUrl('/media/documents/organisation-june-2026.pdf')}" target="_blank" rel="noopener">View the original chart ↗</a></p>`;
+const filtered=Boolean(query)||teamCountry!=='All locations';
+main.innerHTML=heading('01 / OUR PEOPLE','The team.',`${data.people.length} colleagues. One shared direction.`,`<a class="button" href="${safeUrl('/media/documents/organisation-june-2026.pdf')}" download>${icon('down')}Organisation chart</a>`)+`<div class="toolbar"><div class="segmented" aria-label="Team division">${['All teams','Business','Operation','Support'].map(d=>`<button data-division="${d}" class="${division===d?'active':''}" aria-pressed="${division===d}">${d}</button>`).join('')}</div><select class="filter-select" id="team-country" aria-label="Team location">${['All locations',...countries,'France','Sri Lanka'].map(c=>`<option ${c===teamCountry?'selected':''}>${c}</option>`).join('')}</select>${searchBox('Find a colleague or role')}</div>`+(filtered?`<p class="source-note" style="margin:0 0 18px">${eligible.length} ${eligible.length===1?'colleague':'colleagues'} found</p><div class="people-grid">${eligible.map(personCard).join('')}</div>${!eligible.length?empty('No matching colleagues.','Try another name, role or location.','team'):''}`:orgView(division))+`<p class="source-note">Organisation as of June 2026 · <a href="${safeUrl('/media/documents/organisation-june-2026.pdf')}" target="_blank" rel="noopener">View the original chart ↗</a></p>`;
 $('#team-country').onchange=e=>{teamCountry=e.target.value;render()};$$('[data-division]').forEach(b=>b.onclick=()=>{division=b.dataset.division;render()});bindSearch();bindPeople();}
-const orgDepartments=[
- {name:'Sales',lead:'zakarya'},
- {name:'Merchandising',lead:'cindy',exclude:['ly']},
- {name:'Warehouse',lead:'ly'},
- {name:'Operations leadership',lead:'said',exclude:['shewan','sandy','hoang']},
- {name:'Production',lead:'shewan'},
- {name:'Product Development & Purchasing',lead:'sandy'},
- {name:'Quality Control',lead:'hoang'},
- {name:'Finance · China & Hong Kong',lead:'mandy'},
- {name:'Finance · MENA & Vietnam',lead:'sanjaya'},
- {name:'Human Resources & Administration',lead:'tina'},
- {name:'Projects',lead:'caroline'}
+const personById=id=>data.people.find(p=>p.id===id);
+function orgMembers(lead,excluded=new Set()){
+ const all=[],seen=new Set();
+ const visit=id=>{if(excluded.has(id)||seen.has(id))return;seen.add(id);const person=personById(id);if(!person)return;all.push(person);data.people.filter(p=>p.manager===id).forEach(p=>visit(p.id))};
+ visit(lead);return all;
+}
+const descendants=id=>orgMembers(id).slice(1);
+const orgDivisions=[
+ {name:'Business',columns:[
+  {title:'Sales',units:[{label:'SALES MANAGER',lead:'zakarya',members:()=>descendants('zakarya')}]},
+  {title:'Merchandising',units:[{label:'MERCHANDISING MANAGER',lead:'cindy',members:()=>orgMembers('cindy',new Set(['ly'])).slice(1)}]},
+  {title:'Warehouse',units:[{label:'HEAD OF WAREHOUSE',lead:'ly',members:()=>descendants('ly')}]}
+ ]},
+ {name:'Operation',coordinator:'said',columns:[
+  {title:'Production',units:[{label:'PRODUCTION MANAGER',lead:'shewan',members:()=>descendants('shewan')}]},
+  {title:'Product Development',units:[{label:'PD MANAGER',lead:'sandy',members:()=>descendants('sandy').filter(p=>/\bPD\b|Product Development/i.test(p.role)),note:'Also leads Purchasing'}]},
+  {title:'Purchasing',units:[{label:'PURCHASING MANAGER',lead:'sandy',members:()=>descendants('sandy').filter(p=>/purchas/i.test(p.role)),note:'Also leads Product Development'}]},
+  {title:'Quality Control',units:[{label:'GLOBAL QC MANAGER',lead:'hoang',members:()=>descendants('hoang')}]}
+ ]},
+ {name:'Support',columns:[
+  {title:'Finance',units:[
+   {label:'CHINA & HONG KONG',lead:'mandy',members:()=>descendants('mandy')},
+   {label:'MENA & VIETNAM',lead:'sanjaya',members:()=>descendants('sanjaya')}
+  ]},
+  {title:'Human Resources',units:[{label:'HR & ADMINISTRATION',lead:'tina',members:()=>descendants('tina')}]},
+  {title:'Projects & Marketing',units:[
+   {label:'PROJECTS',lead:'caroline',members:()=>descendants('caroline')},
+   {label:'MARKETING',lead:'tina',members:()=>[],note:'Also listed in Human Resources'}
+  ]}
+ ]}
 ];
-function orgMembers(lead,excluded=new Set()){const all=[];const visit=id=>{if(excluded.has(id))return;const person=data.people.find(p=>p.id===id);if(!person)return;all.push(person);data.people.filter(p=>p.manager===id).forEach(p=>visit(p.id))};visit(lead);return all}
-function orgView(){const ceo=data.people.find(p=>p.id==='sammy');return `<div class="org-top"><button class="person" data-person="sammy">${img(ceo)}<span style="text-align:left"><span class="eyebrow">GROUP LEADERSHIP</span><h2 class="person-name" style="font-size:20px;margin-top:7px">${esc(ceo.name)}</h2><p class="person-role">CEO</p></span></button><div class="org-stat">${data.people.length}<small>PEOPLE, CONNECTED</small></div></div><p class="org-intro">Explore each department to see its lead and the colleagues who report through that team.</p><div class="org-departments">`+orgDepartments.map((group,i)=>{const lead=data.people.find(p=>p.id===group.lead),manager=data.people.find(p=>p.id===lead.manager),members=orgMembers(group.lead,new Set(group.exclude||[])),team=members.slice(1);return `<details class="branch department" ${i===0?'open':''}><summary><span class="branch-number">${String(i+1).padStart(2,'0')}</span><span class="branch-title">${esc(group.name)}</span><span class="branch-meta">${members.length} ${members.length===1?'colleague':'colleagues'}</span><span class="branch-plus">${icon('plus')}</span></summary><div class="branch-content"><div class="department-lead"><div><span class="sub-heading">DEPARTMENT LEAD</span>${personCard(lead)}</div><p>${manager?`Reports to <strong>${esc(manager.name)}</strong>`:'Group leadership'}</p></div>${team.length?`<div class="sub-heading">REPORTING LINES</div><div class="reporting-tree">${team.map(p=>{const parent=data.people.find(x=>x.id===p.manager);const level=parent?.id===lead.id?0:1;return `<div class="reporting-row ${level?'indirect':''}"><span class="reporting-link" aria-hidden="true"></span>${personCard(p)}<span class="reports-to">Reports to ${esc(parent?.name||lead.name)}</span></div>`}).join('')}</div>`:`<p class="org-link-note">This lead oversees the departments shown below.</p>`}</div></details>`}).join('')+`</div>`}
+function orgColumn(column){
+ const units=column.units.map(unit=>({unit,lead:personById(unit.lead),members:unit.members()}));
+ const count=new Set(units.flatMap(({lead,members})=>[lead?.id,...members.map(p=>p.id)].filter(Boolean))).size;
+ return `<section class="org-column" aria-label="${esc(column.title)}"><div class="org-column-head"><h3>${esc(column.title)}</h3><span>${count} ${count===1?'colleague':'colleagues'}</span></div>`+
+ units.map(({unit,lead,members})=>`<div class="org-unit"><div class="org-unit-label">${esc(unit.label)}</div>${lead?`<div class="org-unit-lead">${personCard(lead)}</div>`:''}${unit.note?`<p class="org-unit-note">${esc(unit.note)}</p>`:''}${members.length?`<div class="org-members-heading">TEAM MEMBERS · ${members.length}</div><div class="org-member-list">${members.map(p=>{const parent=personById(p.manager);return `<div class="org-member">${personCard(p)}${parent&&parent.id!==lead?.id?`<small>Reports to ${esc(parent.name)}</small>`:''}</div>`}).join('')}</div>`:''}</div>`).join('')+`</section>`;
+}
+function orgView(activeDivision='All teams'){
+ const ceo=personById('sammy');
+ const selected=activeDivision==='All teams'?orgDivisions:orgDivisions.filter(group=>group.name===activeDivision);
+ return `<div class="org-top"><button class="person" data-person="sammy">${img(ceo)}<span style="text-align:left"><span class="eyebrow">GROUP LEADERSHIP</span><h2 class="person-name" style="font-size:20px;margin-top:7px">${esc(ceo.name)}</h2><p class="person-role">CEO</p></span></button><div class="org-stat">${data.people.length}<small>PEOPLE, CONNECTED</small></div></div><p class="org-intro">Explore each division to see its departments, leads and colleagues together.</p><div class="org-departments">`+
+ selected.map((group,i)=>{const colleagues=data.people.filter(p=>p.division===group.name),coordinator=group.coordinator?personById(group.coordinator):null;return `<details class="branch org-division" ${i===0||selected.length===1?'open':''}><summary><span class="branch-number">${String(orgDivisions.indexOf(group)+1).padStart(2,'0')}</span><span class="branch-title">${esc(group.name)}</span><span class="branch-meta">${colleagues.length} ${colleagues.length===1?'colleague':'colleagues'}</span><span class="branch-plus">${icon('plus')}</span></summary><div class="branch-content">${coordinator?`<div class="org-coordinator"><span class="eyebrow">OPERATION TEAM MANAGER</span>${personCard(coordinator)}</div>`:''}<div class="org-columns org-columns-${group.columns.length}">${group.columns.map(orgColumn).join('')}</div></div></details>`}).join('')+`</div>`;
+}
 function bindSearch(){const e=$('#search');if(e)e.oninput=()=>{query=e.value;const pos=e.selectionStart;render();$('#search').focus();$('#search').setSelectionRange(pos,pos)}}
 function bindPeople(){$$('[data-person]').forEach(b=>b.onclick=()=>profile(b.dataset.person))}
 function profile(id){const p=data.people.find(x=>x.id===id),manager=data.people.find(x=>x.id===p.manager),reports=data.people.filter(x=>x.manager===p.id);openModal(`<div class="profile-head">${img(p)}<div><span class="eyebrow">${esc(p.division)} TEAM</span><h2>${esc(p.name)}</h2><p style="margin:0">${esc(p.role)}</p>${countryBadge(p)}</div></div>${manager?`<div class="profile-manager"><div class="detail-label">REPORTS TO</div><button data-person="${manager.id}"><strong>${esc(manager.name)}</strong><p style="margin:3px 0 0">${esc(manager.role)}</p></button></div>`:'<p>Group leadership</p>'}${reports.length?`<div class="reports"><div class="detail-label">DIRECT REPORTS · ${reports.length}</div>${reports.map(personCard).join('')}</div>`:''}<p class="source-note">Source: June 2026 organisation chart</p>`);bindPeople()}
